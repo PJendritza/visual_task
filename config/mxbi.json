@@ -24,7 +24,7 @@
             "type": "mx_eye",
             "id": 0,
             "enabled": true,
-            "host": "127.0.0.1",
+            "host": "169.254.243.124",
             "data_port": 5556,
             "control_port": 5557,
             "timeout": 3.0,
