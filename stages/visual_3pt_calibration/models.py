@@ -85,8 +85,8 @@ class Config(BaseModel):
         return self.stored.fixation_duration_max_ms
 
     @property
-    def reward_delay_ms(self) -> int:
-        return self.stored.levels[self.level].reward_delay_ms
+    def post_reward_stimulus_duration_ms(self) -> int:
+        return self.stored.post_reward_stimulus_duration_ms
 
     @property
     def target_size_cm(self) -> float:
@@ -164,22 +164,25 @@ class Config(BaseModel):
 class LevelConfig(BaseModel):
     target_size_cm: float = Field(gt=0)
 
-    # Fixed per-level delay between a correct touch and the reward
-    # actually being dispensed. The marmoset image stays visible for
-    # this whole delay, then stays visible for a further
-    # reward_duration_ms while the reward itself is administered - so
-    # the total time the marmoset remains on screen after a correct
-    # touch is reward_delay_ms + reward_duration_ms. This teaches the
-    # animal to associate looking at the marmoset specifically (not just
-    # touching blindly) with the reward that follows. 0 means the
-    # reward fires immediately on a correct touch, same as before this
-    # field existed.
-    reward_delay_ms: NonNegativeInt = 0
-
 
 class StoredConfig(BaseModel):
     inter_trial_duration_ms: PositiveInt
+
+    # How long (ms) the reward hardware pump runs for - passed directly
+    # to Rewarder.give_reward(), so this is what actually determines how
+    # much reward liquid is dispensed. Not related to how long the
+    # marmoset stimulus stays on screen; see
+    # post_reward_stimulus_duration_ms for that.
     reward_duration_ms: PositiveInt
+
+    # How long (ms) the marmoset stimulus stays on screen *after* the
+    # reward has been given, before its sprite is removed and the
+    # inter-trial period begins (see
+    # Visual3ptCalibration._deliver_reward_and_flash). Independent of
+    # reward_duration_ms - this does not affect how much reward is
+    # dispensed, only how long the stimulus lingers afterwards. 0 means
+    # the stimulus is removed as soon as the reward is given.
+    post_reward_stimulus_duration_ms: NonNegativeInt = 0
 
     # Fixation screen duration is randomized per-trial, uniformly drawn
     # from [fixation_duration_min_ms, fixation_duration_max_ms].
