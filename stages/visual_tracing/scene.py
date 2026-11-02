@@ -251,7 +251,32 @@ class VisualTracing(Scene):
         # it empty means the trace simply shows nothing until the first
         # genuinely fresh _on_motion call populates it, rather than
         # briefly flashing the old position.
+        #
+        # Mouse/finger touches carry over safely: pygame guarantees no
+        # new FINGERDOWN/MOUSEBUTTONDOWN event is re-delivered for an
+        # input that's still physically held down, so "stashed at the
+        # end of the last trial" reliably means "still down now" for
+        # those touch ids.
+        #
+        # Gaze has no such guarantee - it's polled every frame rather
+        # than event-driven, and can silently disappear (tracking lost,
+        # animal looks away) in the gap between one trial ending and the
+        # next beginning. Blindly reinstating a GAZE_TOUCH_ID tracker
+        # from a stashed position would let dwell accumulate against a
+        # gaze signal that's actually gone: _check_all_trackers() re-
+        # evaluates every tracker's last_pos every frame regardless of
+        # whether GazeDwellDriver ever calls _on_motion again, and
+        # GazeDwellDriver itself would tolerate the loss silently for up
+        # to lost_grace_ms (several seconds) before ever abandoning it -
+        # far longer than min_touch_duration_ms typically takes to fire
+        # fixation. So only reinstate GAZE_TOUCH_ID here if a fresh gaze
+        # sample is available right now; otherwise drop it and let
+        # GazeDwellDriver start fresh (already_down=False), requiring a
+        # new press once gaze actually returns.
+        current_gaze_sample = self._mxbiflow.eye_sample
         for touch_id, pos in positions.items():
+            if touch_id == GAZE_TOUCH_ID and current_gaze_sample is None:
+                continue
             tracker = DwellTracker(touch_id=touch_id)
             tracker.last_pos = pos
             self._trackers[touch_id] = tracker

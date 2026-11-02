@@ -497,6 +497,62 @@ class CrossTrialHandoffTests(unittest.TestCase):
         scene._claim_pending_touches()
         self.assertEqual(scene._trackers, {})
 
+    def test_claim_pending_touches_drops_stale_gaze_when_no_current_sample(
+        self,
+    ) -> None:
+        # Regression test: a GAZE_TOUCH_ID tracker stashed at the end of
+        # the previous trial must not be blindly reinstated if gaze is
+        # not actually present right now - otherwise dwell can
+        # accumulate against a gaze signal that's already gone (see
+        # _claim_pending_touches's docstring/comment), letting fixation
+        # fire - and the trial proceed all the way to reward - with no
+        # eye signal detected at all.
+        import stages.visual_3pt_calibration.scene as scene_module
+        from gaze_input import GAZE_TOUCH_ID
+
+        scene_module._pending_touch_positions = {GAZE_TOUCH_ID: (7, 8)}
+        scene = make_scene()
+        scene._mxbiflow.eye_sample = None
+
+        scene._claim_pending_touches()
+
+        self.assertNotIn(GAZE_TOUCH_ID, scene._trackers)
+        self.assertNotIn(GAZE_TOUCH_ID, scene._trajectories)
+        self.assertIsNone(scene_module._pending_touch_positions)
+
+    def test_claim_pending_touches_keeps_gaze_when_sample_currently_present(
+        self,
+    ) -> None:
+        import stages.visual_3pt_calibration.scene as scene_module
+        from gaze_input import GAZE_TOUCH_ID
+
+        scene_module._pending_touch_positions = {GAZE_TOUCH_ID: (7, 8)}
+        scene = make_scene()
+        scene._mxbiflow.eye_sample = Mock(x=7.0, y=8.0)
+
+        scene._claim_pending_touches()
+
+        self.assertIn(GAZE_TOUCH_ID, scene._trackers)
+        self.assertEqual(scene._trackers[GAZE_TOUCH_ID].last_pos, (7, 8))
+        self.assertEqual(scene._trajectories[GAZE_TOUCH_ID], [])
+
+    def test_claim_pending_touches_still_keeps_mouse_touch_regardless_of_gaze(
+        self,
+    ) -> None:
+        # Mouse/finger touches carry over unconditionally - only gaze
+        # needs the live-sample check, since only gaze can silently
+        # disappear between trials (see _claim_pending_touches).
+        import stages.visual_3pt_calibration.scene as scene_module
+
+        scene_module._pending_touch_positions = {-1: (7, 8)}
+        scene = make_scene()
+        scene._mxbiflow.eye_sample = None
+
+        scene._claim_pending_touches()
+
+        self.assertIn(-1, scene._trackers)
+        self.assertEqual(scene._trackers[-1].last_pos, (7, 8))
+
 
 class QuitFlowTests(unittest.TestCase):
     def test_quit_stashes_touches_when_trial_ended_normally(self) -> None:
