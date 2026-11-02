@@ -7,7 +7,7 @@
 
     "dwell_grace_enabled": true,
     "dwell_grace_ms": 150,
-    "show_gaze_trace": true,
+    "show_gaze_trace": false,
     "gaze_trace_duration_ms": 500,
 
     "fixation_duration_min_ms": 1000,
@@ -16,12 +16,13 @@
     "fixation_point_radius_cm": 0.50,
     "fixation_point_inner_radius_ratio": 0.4,
     
-    "target_distances_cm": 3,
+    "target_distances_cm": 5,
 
     "min_touch_duration_ms": 200,
 
     "target_touch_reward_enabled": true,
     "reward_duration_ms": 1000,
+    "post_reward_stimulus_duration_ms": 1500,
 
     "level_up_threshold": 0.8,
     "level_up_trial_count_threshold": 200,
