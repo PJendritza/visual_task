@@ -11,8 +11,6 @@ from mxbiflow.models.animal import AnimalBaseInfo
 from pydantic import ValidationError
 from pygame import (
     FINGERDOWN,
-    FINGERMOTION,
-    FINGERUP,
     MOUSEBUTTONDOWN,
     MOUSEBUTTONUP,
     MOUSEMOTION,
@@ -41,6 +39,7 @@ def make_stored_config() -> StoredConfig:
     return StoredConfig(
         inter_trial_duration_ms=1500,
         reward_duration_ms=1000,
+        post_reward_stimulus_duration_ms=750,
         attention_duration_ms=1000,
         fixation_duration_min_ms=1000,
         fixation_duration_max_ms=2000,
@@ -65,25 +64,21 @@ def make_stored_config() -> StoredConfig:
                 reaction_window_duration_ms=10000,
                 fixation_touch_reward_radius_cm=1000.0,
                 target_size_cm=1.0,
-                reward_delay_ms=500,
             ),
             2: LevelConfig(
                 reaction_window_duration_ms=5000,
                 fixation_touch_reward_radius_cm=10.0,
                 target_size_cm=1.0,
-                reward_delay_ms=500,
             ),
             3: LevelConfig(
                 reaction_window_duration_ms=5000,
                 fixation_touch_reward_radius_cm=3.0,
                 target_size_cm=1.0,
-                reward_delay_ms=300,
             ),
             4: LevelConfig(
                 reaction_window_duration_ms=5000,
                 fixation_touch_reward_radius_cm=0.0,
                 target_size_cm=1.0,
-                reward_delay_ms=300,
             ),
         },
     )
@@ -326,21 +321,26 @@ class ConfigTests(unittest.TestCase):
         # level 3: 3.0cm * 46.0px/cm = 138.0
         self.assertAlmostEqual(make_config(level=3).fixation_touch_reward_radius_px, 138.0)
 
-    def test_reward_delay_ms_is_level_specific(self) -> None:
-        self.assertEqual(make_config(level=1).reward_delay_ms, 500)
-        self.assertEqual(make_config(level=3).reward_delay_ms, 300)
+    def test_post_reward_stimulus_duration_ms_is_global_not_level_specific(
+        self,
+    ) -> None:
+        self.assertEqual(make_config(level=1).post_reward_stimulus_duration_ms, 750)
+        self.assertEqual(make_config(level=3).post_reward_stimulus_duration_ms, 750)
 
-    def test_reward_delay_ms_field_default_is_0(self) -> None:
-        self.assertEqual(LevelConfig.model_fields["reward_delay_ms"].default, 0)
+    def test_post_reward_stimulus_duration_ms_field_default_is_0(self) -> None:
+        self.assertEqual(
+            StoredConfig.model_fields["post_reward_stimulus_duration_ms"].default, 0
+        )
 
-    def test_reward_delay_ms_rejects_negative(self) -> None:
+    def test_post_reward_stimulus_duration_ms_rejects_negative(self) -> None:
         with self.assertRaises(ValidationError):
-            LevelConfig.model_validate(
+            StoredConfig.model_validate(
                 {
-                    "reaction_window_duration_ms": 10000,
-                    "target_size_cm": 1.0,
-                    "fixation_touch_reward_radius_cm": 0.0,
-                    "reward_delay_ms": -1,
+                    **make_stored_config().model_dump(exclude={"levels"}),
+                    "levels": {
+                        k: v.model_dump() for k, v in make_stored_config().levels.items()
+                    },
+                    "post_reward_stimulus_duration_ms": -1,
                 }
             )
 
@@ -1090,63 +1090,59 @@ class StimulusTouchTests(unittest.TestCase):
 
 
 class CorrectTouchSequenceTests(unittest.TestCase):
-    """Covers the full post-correct-touch sequence: the marmoset stays
-    visible through reward_delay_ms, then through reward_duration_ms
-    while the reward is given, then is removed and inter-trial begins."""
+    """Covers the full post-correct-touch sequence: the reward is given
+    immediately, then the marmoset stays visible for
+    post_reward_stimulus_duration_ms afterwards before it is removed and
+    inter-trial begins. reward_duration_ms is unrelated to this timer -
+    it only controls how long the reward pump itself runs (see
+    _give_reward)."""
 
-    def test_on_correct_sets_result_and_schedules_the_delay(self) -> None:
-        scene = make_scene()
-        scene._config = SimpleNamespace(reward_delay_ms=500)
-        scene._give_reward = Mock()
-
-        scene._on_correct()
-
-        self.assertEqual(scene._result.result, ResultEnum.CORRECT)
-        scene._give_reward.assert_not_called()
-        scene._on_inter_trial.assert_not_called()
-        scene._timer.after.assert_called_once_with(
-            500, scene._deliver_reward_and_flash
-        )
-
-    def test_zero_reward_delay_delivers_reward_immediately(self) -> None:
+    def test_on_correct_sets_result_and_delivers_reward_immediately(self) -> None:
         scene = make_scene()
         scene._config = SimpleNamespace(
-            reward_delay_ms=0,
             reward_duration_ms=1000,
+            post_reward_stimulus_duration_ms=750,
             target_touch_reward_enabled=True,
         )
         scene._give_reward = Mock()
 
         scene._on_correct()
 
+        self.assertEqual(scene._result.result, ResultEnum.CORRECT)
         scene._give_reward.assert_called_once_with()
-        scene._timer.after.assert_called_once_with(1000, scene._end_correct_trial)
+        scene._on_inter_trial.assert_not_called()
+        scene._timer.after.assert_called_once_with(750, scene._end_correct_trial)
 
     def test_deliver_reward_and_flash_gives_reward_when_enabled(self) -> None:
         scene = make_scene()
         scene._config = SimpleNamespace(
-            reward_duration_ms=1000, target_touch_reward_enabled=True
+            reward_duration_ms=1000,
+            post_reward_stimulus_duration_ms=750,
+            target_touch_reward_enabled=True,
         )
         scene._give_reward = Mock()
 
         scene._deliver_reward_and_flash()
 
         scene._give_reward.assert_called_once_with()
-        scene._timer.after.assert_called_once_with(1000, scene._end_correct_trial)
+        scene._timer.after.assert_called_once_with(750, scene._end_correct_trial)
 
     def test_deliver_reward_and_flash_still_flashes_when_reward_disabled(self) -> None:
         # Even with the reward toggle off, the marmoset still flashes
-        # for reward_duration_ms - only the actual reward is withheld.
+        # for post_reward_stimulus_duration_ms - only the actual reward
+        # is withheld.
         scene = make_scene()
         scene._config = SimpleNamespace(
-            reward_duration_ms=1000, target_touch_reward_enabled=False
+            reward_duration_ms=1000,
+            post_reward_stimulus_duration_ms=750,
+            target_touch_reward_enabled=False,
         )
         scene._give_reward = Mock()
 
         scene._deliver_reward_and_flash()
 
         scene._give_reward.assert_not_called()
-        scene._timer.after.assert_called_once_with(1000, scene._end_correct_trial)
+        scene._timer.after.assert_called_once_with(750, scene._end_correct_trial)
 
     def test_end_correct_trial_removes_target_and_proceeds(self) -> None:
         scene = make_scene()
@@ -1156,11 +1152,11 @@ class CorrectTouchSequenceTests(unittest.TestCase):
         scene._sprites.remove.assert_called_once_with([scene._correct_target])
         scene._on_inter_trial.assert_called_once_with()
 
-    def test_marmoset_stays_visible_for_delay_plus_reward_duration(self) -> None:
+    def test_marmoset_stays_visible_for_post_reward_stimulus_duration(self) -> None:
         scene = make_scene()
         scene._config = SimpleNamespace(
-            reward_delay_ms=500,
             reward_duration_ms=1000,
+            post_reward_stimulus_duration_ms=750,
             target_touch_reward_enabled=True,
         )
         scene._give_reward = Mock()
@@ -1168,12 +1164,8 @@ class CorrectTouchSequenceTests(unittest.TestCase):
         scene._timer.after.side_effect = lambda ms, cb: scheduled.append((ms, cb))
 
         scene._on_correct()
-        self.assertEqual(scheduled, [(500, scene._deliver_reward_and_flash)])
-        scene._sprites.remove.assert_not_called()
-
-        scheduled.pop()[1]()
         scene._give_reward.assert_called_once_with()
-        self.assertEqual(scheduled, [(1000, scene._end_correct_trial)])
+        self.assertEqual(scheduled, [(750, scene._end_correct_trial)])
         scene._sprites.remove.assert_not_called()
 
         scheduled.pop()[1]()
