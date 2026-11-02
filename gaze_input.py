@@ -40,7 +40,7 @@ reserved id, not a replacement for the event-driven path.
 from time import monotonic
 from typing import Callable, Protocol
 
-from mxbiflow.utils.logger import logger
+from loguru import logger
 
 # Reserved synthetic touch id for gaze, distinct from mouse (-1) and real
 # finger ids (>= 0, assigned by SDL).

@@ -5,6 +5,7 @@ from time import monotonic, time
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 import pygame
+from loguru import logger
 from mxbiflow import get_mxbiflow
 from mxbiflow.assets import (
     Corner,
@@ -901,27 +902,25 @@ class Visual3ptCalibration(Scene):
     def _on_correct(self):
         self._result.result = ResultEnum.CORRECT
 
-        # The marmoset stays visible throughout: first for
-        # reward_delay_ms on its own (the "look at it before you're
-        # rewarded" teaching gap), then for a further reward_duration_ms
-        # while the reward itself is administered (when
-        # target_touch_reward_enabled is True - see below). Total time
-        # the marmoset remains on screen after a correct touch is
-        # therefore reward_delay_ms + reward_duration_ms.
-        # _give_reward() is a fire-and-forget call to the reward
-        # hardware (it doesn't block the game loop), so "keeping the
-        # marmoset flashing while the reward is being given" just means
-        # not removing its sprite until that second timer elapses.
-        reward_delay_ms = self._config.reward_delay_ms
-        if reward_delay_ms > 0:
-            self._timer.after(reward_delay_ms, self._deliver_reward_and_flash)
-        else:
-            self._deliver_reward_and_flash()
+        # The reward is given immediately on a correct touch (when
+        # target_touch_reward_enabled is True - see below), then the
+        # marmoset stays visible for a further
+        # post_reward_stimulus_duration_ms afterwards before its sprite
+        # is removed. _give_reward() is a fire-and-forget call to the
+        # reward hardware (it doesn't block the game loop), so this just
+        # means not removing the marmoset's sprite until that post-reward
+        # timer elapses.
+        self._deliver_reward_and_flash()
 
     def _deliver_reward_and_flash(self) -> None:
         if self._config.target_touch_reward_enabled:
             self._give_reward()
-        self._timer.after(self._config.reward_duration_ms, self._end_correct_trial)
+        post_reward_stimulus_duration_ms = self._config.post_reward_stimulus_duration_ms
+        logger.info(
+            "Stimulus shown for {} ms after reward.",
+            post_reward_stimulus_duration_ms,
+        )
+        self._timer.after(post_reward_stimulus_duration_ms, self._end_correct_trial)
 
     def _end_correct_trial(self) -> None:
         self._sprites.remove(
