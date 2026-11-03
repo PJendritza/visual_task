@@ -19,6 +19,7 @@ from pygame import (
 )
 
 from dwell import DwellTracker
+from stimulus_events import StimulusEvents
 from stages.visual_3pt_calibration.models import (
     Config,
     LevelConfig,
@@ -79,6 +80,7 @@ def make_scene() -> Any:
     scene._timer = Mock()
     scene._rewarder = Mock()
     scene._mxbiflow = Mock()
+    scene._stimulus_events = StimulusEvents(scene._mxbiflow)
     scene._animal = Mock()
     scene._animal.trial_id = 1
     scene._animal.name = "test-animal"
