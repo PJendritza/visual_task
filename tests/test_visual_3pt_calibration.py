@@ -83,6 +83,7 @@ def make_scene() -> Any:
     scene._stimulus_events = StimulusEvents(scene._mxbiflow)
     scene._animal = Mock()
     scene._animal.trial_id = 1
+    scene._animal.current_stage.level = 1
     scene._animal.name = "test-animal"
     scene._running = True
     scene._phase = "blank"
@@ -718,7 +719,8 @@ class SettlementTests(unittest.TestCase):
 
 class StructureConsistencyTests(unittest.TestCase):
     def test_scene_name_is_canonical(self) -> None:
-        self.assertEqual(Visual3ptCalibration.name(), "visual_3pt_calibration")
+        # Preserve the framework's registered name for existing session configs.
+        self.assertEqual(Visual3ptCalibration.name(), "visual3pt_calibration")
 
 
 class RealStimulusTests(unittest.TestCase):
