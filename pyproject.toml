@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-mxbiflow = { git = "https://github.com/CHiPmxbi/mxbiflow.git", rev="451a8cd5e7cf9e215e9d82681abffc36c0e1bdb6" }
+mxbiflow = { git = "https://github.com/PJendritza/mxbiflow.git", branch = "feature/mx-eye-events" }
 py-mx-eye = { git = "https://github.com/kimdenyse99/mx_eye.git", subdirectory = "packages/py-mx-eye" }
 mx-eye-protocol = { git = "https://github.com/kimdenyse99/mx_eye.git", subdirectory = "packages/protocol" }
 

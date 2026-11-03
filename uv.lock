@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -576,15 +576,15 @@ wheels = [
 [[package]]
 name = "mx-eye-protocol"
 version = "0.1.0"
-source = { git = "https://github.com/PJendritza/mx_eye.git?subdirectory=packages%2Fprotocol&rev=44b684b56a413ba776aa8bea511c3864f7e36e0c#44b684b56a413ba776aa8bea511c3864f7e36e0c" }
+source = { git = "https://github.com/PJendritza/mx_eye.git?subdirectory=packages%2Fprotocol&rev=6c6abfda74d9cca16c4a9b411ff08042d40e1f48#6c6abfda74d9cca16c4a9b411ff08042d40e1f48" }
 dependencies = [
     { name = "pydantic" },
 ]
 
 [[package]]
 name = "mxbiflow"
-version = "0.3.27"
-source = { git = "https://github.com/CHiPmxbi/mxbiflow.git?rev=451a8cd5e7cf9e215e9d82681abffc36c0e1bdb6#451a8cd5e7cf9e215e9d82681abffc36c0e1bdb6" }
+version = "0.3.26"
+source = { git = "https://github.com/PJendritza/mxbiflow.git?branch=feature%2Fmx-eye-events#c910aaeab38bd0609cbd03395949ab33fb10a69f" }
 dependencies = [
     { name = "gpiozero" },
     { name = "inflection" },
@@ -767,7 +767,7 @@ wheels = [
 [[package]]
 name = "py-mx-eye"
 version = "0.1.0"
-source = { git = "https://github.com/PJendritza/mx_eye.git?subdirectory=packages%2Fpy-mx-eye&rev=44b684b56a413ba776aa8bea511c3864f7e36e0c#44b684b56a413ba776aa8bea511c3864f7e36e0c" }
+source = { git = "https://github.com/PJendritza/mx_eye.git?subdirectory=packages%2Fpy-mx-eye&rev=6c6abfda74d9cca16c4a9b411ff08042d40e1f48#6c6abfda74d9cca16c4a9b411ff08042d40e1f48" }
 dependencies = [
     { name = "mx-eye-protocol" },
     { name = "pydantic" },
@@ -1288,7 +1288,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mxbiflow", extras = ["log"], git = "https://github.com/CHiPmxbi/mxbiflow.git?rev=451a8cd5e7cf9e215e9d82681abffc36c0e1bdb6" },
+    { name = "mxbiflow", extras = ["log"], git = "https://github.com/PJendritza/mxbiflow.git?branch=feature%2Fmx-eye-events" },
     { name = "numpy", specifier = ">=2.5.2" },
     { name = "pillow", specifier = ">=11.0.0" },
     { name = "pymotego", specifier = ">=0.1.6" },
